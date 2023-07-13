@@ -1,0 +1,11 @@
+{
+  "name": "aafdynamicpositioner",
+  "version-string": "0.6.0",
+  "license": "MIT",
+  "dependencies": [
+    "boost-stl-interfaces",
+    "fmt",
+    "mmio",
+    "spdlog"
+  ]
+}
