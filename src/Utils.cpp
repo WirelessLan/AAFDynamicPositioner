@@ -104,4 +104,31 @@ namespace Utils {
 		REL::Relocation<func_t> func{ REL::ID(334873) };
 		func(a_refr, a_axis, a_value);
 	}
+
+	bool HasSpell(RE::Actor* a_actor, RE::SpellItem* a_spell) {
+		if (!a_actor || !a_spell)
+			return false;
+
+		using func_t = bool(*)(RE::Actor*, RE::SpellItem*);
+		REL::Relocation<func_t> func{ REL::ID(850247) };
+		return func(a_actor, a_spell);
+	}
+
+	void AddSpell(RE::Actor* a_actor, RE::SpellItem* a_spell) {
+		if (!a_actor || !a_spell)
+			return;
+
+		using func_t = void(*)(RE::Actor*, RE::SpellItem*);
+		REL::Relocation<func_t> func{ REL::ID(1433810) };
+		func(a_actor, a_spell);
+	}
+
+	void RemoveSpell(RE::Actor* a_actor, RE::SpellItem* a_spell) {
+		if (!a_actor || !a_spell)
+			return;
+
+		using func_t = void(*)(RE::Actor*, RE::SpellItem*);
+		REL::Relocation<func_t> func{ REL::ID(1500183) };
+		func(a_actor, a_spell);
+	}
 }

@@ -35,6 +35,18 @@ namespace Positioners {
 	std::uint32_t g_selectedActorFormID = 0;
 	bool g_positionerEnabled = false;
 
+	std::uint32_t GetSelectedActorFormID() {
+		return g_selectedActorFormID;
+	}
+
+	void SetSelectedActorFormID(std::uint32_t a_formID) {
+		g_selectedActorFormID = a_formID;
+	}
+
+	void ClearSelectedActorFormID() {
+		SetSelectedActorFormID(0);
+	}
+
 	ActorData* GetActorDataByFormID(std::uint32_t a_formID) {
 		auto it = g_actorMap.find(a_formID);
 		if (it == g_actorMap.end())
@@ -52,10 +64,10 @@ namespace Positioners {
 	}
 
 	ActorData* GetSelectedActorData() {
-		if (!g_selectedActorFormID)
+		if (!GetSelectedActorFormID())
 			return nullptr;
 
-		return GetActorDataByFormID(g_selectedActorFormID);
+		return GetActorDataByFormID(GetSelectedActorFormID());
 	}
 
 	SceneData* GetSceneDataByID(std::uint64_t a_sceneID) {
@@ -90,7 +102,36 @@ namespace Positioners {
 		return (ExtraRefrPath*)refrPath;
 	}
 
-	bool IsSceneHasPlayer(SceneData* a_sceneData) {
+	RE::SpellItem* GetHighlightSpell(bool a_isMovable) {
+		static RE::SpellItem* movableSpell = nullptr;
+		static RE::SpellItem* immovableSpell = nullptr;
+
+		if (a_isMovable) {
+			if (!movableSpell) {
+				auto movableSpellForm = Utils::GetFormFromIdentifier("AAFDynamicPositioner.esp"sv, 0x00000810);
+				if (movableSpellForm)
+					movableSpell = movableSpellForm->As<RE::SpellItem>();
+			}
+			return movableSpell;
+		}
+		else {
+			if (!immovableSpell) {
+				auto immovableSpellForm = Utils::GetFormFromIdentifier("AAFDynamicPositioner.esp"sv, 0x00000811);
+				if (immovableSpellForm)
+					immovableSpell = immovableSpellForm->As<RE::SpellItem>();
+			}
+			return immovableSpell;
+		}
+	}
+
+	void ClearHighlightSpellFromActor(RE::Actor* a_actor) {
+		if (Utils::HasSpell(a_actor, GetHighlightSpell(true)))
+			Utils::RemoveSpell(a_actor, GetHighlightSpell(true));
+		if (Utils::HasSpell(a_actor, GetHighlightSpell(false)))
+			Utils::RemoveSpell(a_actor, GetHighlightSpell(false));
+	}
+
+	bool IsPlayerInScene(SceneData* a_sceneData) {
 		if (!a_sceneData)
 			return false;
 
@@ -135,7 +176,7 @@ namespace Positioners {
 			return std::vector<PositionData::Data>();
 
 		if (g_separatePlayerOffset)
-			return PositionData::LoadPositionData(a_sceneData->Position, IsSceneHasPlayer(a_sceneData));
+			return PositionData::LoadPositionData(a_sceneData->Position, IsPlayerInScene(a_sceneData));
 		else
 			return PositionData::LoadPositionData(a_sceneData->Position, false);
 	}
@@ -145,7 +186,7 @@ namespace Positioners {
 			return;
 
 		if (g_separatePlayerOffset)
-			PositionData::SavePositionData(a_sceneData->Position, a_sceneData->ActorList, IsSceneHasPlayer(a_sceneData));
+			PositionData::SavePositionData(a_sceneData->Position, a_sceneData->ActorList, IsPlayerInScene(a_sceneData));
 		else
 			PositionData::SavePositionData(a_sceneData->Position, a_sceneData->ActorList, false);
 	}
@@ -281,7 +322,7 @@ namespace Positioners {
 		g_actorMap.clear();
 		g_sceneMap.clear();
 		g_sceneMapKey = 1;
-		g_selectedActorFormID = 0;
+		ClearSelectedActorFormID();
 		g_positionerEnabled = false;
 	}
 
@@ -294,8 +335,11 @@ namespace Positioners {
 			g_positionerEnabled = true;
 		}
 		else {
+			ActorData* actorData = GetSelectedActorData();
+			if (actorData)
+				ClearHighlightSpellFromActor(actorData->Actor);
+			ClearSelectedActorFormID();
 			g_positionerEnabled = false;
-			g_selectedActorFormID = 0;
 		}
 	}
 
@@ -372,7 +416,7 @@ namespace Positioners {
 			else
 				actorData->Offset = GetOffsetFromPositionData(prevPosDataVec, ii);
 
-			if (Scaleforms::IsMenuOpen() && actorData->FormID == g_selectedActorFormID)
+			if (Scaleforms::IsMenuOpen() && actorData->FormID == GetSelectedActorFormID())
 				Scaleforms::UpdateMenu(actorData->Offset);
 
 			// 액터의 실제 위치를 저장하는 ExtraRefrPath를 불러옴
@@ -407,12 +451,14 @@ namespace Positioners {
 			if (!actorData)
 				continue;
 
-			if (Scaleforms::IsMenuOpen() && actorData->FormID == g_selectedActorFormID)
-				Scaleforms::CloseMenu();
-
 			// 선택한 액터가 종료되는 씬에 포함되어있을 경우 선택한 액터를 초기화
-			if (g_selectedActorFormID == actorData->FormID)
-				g_selectedActorFormID = 0;
+			if (actorData->FormID == GetSelectedActorFormID()) {
+				if (Scaleforms::IsMenuOpen())
+					Scaleforms::CloseMenu();
+
+				ClearHighlightSpellFromActor(actor);
+				ClearSelectedActorFormID();
+			}
 
 			g_actorMap.erase(actorData->FormID);
 		}
@@ -437,7 +483,7 @@ namespace Positioners {
 		return CAN_MOVE::kYes;
 	}
 
-	RE::Actor* ChangeSelectedActor(std::monostate) {
+	RE::Actor* ChangeSelectedActor() {
 		if (!g_positionerEnabled)
 			return nullptr;
 
@@ -461,7 +507,7 @@ namespace Positioners {
 				if (!actorData)
 					return nullptr;
 
-				g_selectedActorFormID = actorData->FormID;
+				SetSelectedActorFormID(actorData->FormID);
 				return actorData->Actor;
 			}
 
@@ -478,7 +524,7 @@ namespace Positioners {
 			if (!actorData)
 				return nullptr;
 
-			g_selectedActorFormID = actorData->FormID;
+			SetSelectedActorFormID(actorData->FormID);
 			return actorData->Actor;
 		}
 
@@ -500,7 +546,7 @@ namespace Positioners {
 			if (!actorData)
 				return nullptr;
 
-			g_selectedActorFormID = actorData->FormID;
+			SetSelectedActorFormID(actorData->FormID);
 			return actorData->Actor;
 		}
 
@@ -516,7 +562,7 @@ namespace Positioners {
 			if (!actorData)
 				return nullptr;
 
-			g_selectedActorFormID = actorData->FormID;
+			SetSelectedActorFormID(actorData->FormID);
 			return actorData->Actor;
 		}
 
@@ -530,28 +576,28 @@ namespace Positioners {
 		if (!actorData)
 			return nullptr;
 
-		g_selectedActorFormID = actorData->FormID;
+		SetSelectedActorFormID(actorData->FormID);
 		return actorData->Actor;
 	}
 
-	RE::Actor* GetSelectedActor(std::monostate) {
+	bool ChangeActor_Native(std::monostate) {
 		ActorData* selectedActorData = GetSelectedActorData();
-		if (!selectedActorData)
-			return nullptr;
+		if (selectedActorData)
+			ClearHighlightSpellFromActor(selectedActorData->Actor);
 
-		return selectedActorData->Actor;
+		RE::Actor* selectedActor = ChangeSelectedActor();
+		if (!selectedActor)
+			return false;
+
+		if (CanMovePosition({}) == CAN_MOVE::kYes)
+			Utils::AddSpell(selectedActor, GetHighlightSpell(true));
+		else
+			Utils::AddSpell(selectedActor, GetHighlightSpell(false));
+
+		return true;
 	}
 
-	RE::SpellItem* GetHighlightSpell(std::monostate, bool a_isMovable) {
-		static RE::TESForm* movableSpellForm = Utils::GetFormFromIdentifier("AAFDynamicPositioner.esp"sv, 0x00000810);
-		static RE::TESForm* immovableSpellForm = Utils::GetFormFromIdentifier("AAFDynamicPositioner.esp"sv, 0x00000811);
-		if (!movableSpellForm || !immovableSpellForm)
-			return nullptr;
-
-		return a_isMovable ? movableSpellForm->As<RE::SpellItem>() : immovableSpellForm->As<RE::SpellItem>();
-	}
-
-	void ShowPositionerMenuNative(std::monostate) {
+	void ShowPositionerMenu_Native(std::monostate) {
 		if (!g_positionerEnabled)
 			return;
 
@@ -583,10 +629,8 @@ namespace Positioners {
 		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "SceneEnd"sv, SceneEnd);
 
 		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "CanMovePosition"sv, CanMovePosition);
-		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "ChangeSelectedActor"sv, ChangeSelectedActor);
-		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "GetSelectedActor"sv, GetSelectedActor);
-		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "GetHighlightSpell"sv, GetHighlightSpell);
+		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "ChangeActor_Native"sv, ChangeActor_Native);
 
-		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "ShowPositionerMenuNative"sv, ShowPositionerMenuNative);
+		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "ShowPositionerMenu_Native"sv, ShowPositionerMenu_Native);
 	}
 }

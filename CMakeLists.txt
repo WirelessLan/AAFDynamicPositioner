@@ -27,7 +27,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE 
 
 project(
 	AAFDynamicPositioner
-	VERSION 0.6.0
+	VERSION 0.6.1
 	LANGUAGES CXX
 )
 
