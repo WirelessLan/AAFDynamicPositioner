@@ -79,8 +79,9 @@ namespace Inputs {
 		static BSInputEnableManager* GetSingleton() {
 			REL::Relocation<BSInputEnableManager**> InputEnableManager{ REL::ID(781703) };
 			auto ptr = InputEnableManager.get();
-			if (!ptr)
+			if (!ptr) {
 				return nullptr;
+			}
 			return *ptr;
 		}
 
@@ -146,31 +147,25 @@ namespace Inputs {
 		case kGamepadButtonOffset_DPAD_UP:
 		case 0x57:	// W Key
 			return ACTION_KEY::kActionKey_UP;
-			break;
 
 		case kGamepadButtonOffset_DPAD_DOWN:
 		case 0x53:	// S Key
 			return ACTION_KEY::kActionKey_DOWN;
-			break;
 
 		case kGamepadButtonOffset_DPAD_LEFT:
 		case 0x41:	// A Key
 			return ACTION_KEY::kActionKey_LEFT;
-			break;
 
 		case kGamepadButtonOffset_DPAD_RIGHT:
 		case 0x44:	// D Key
 			return ACTION_KEY::kActionKey_RIGHT;
-			break;
 
 		case kGamepadButtonOffset_A:
 		case 0x45:	// E Key
 			return ACTION_KEY::kActionKey_ENTER;
-			break;
 
 		case kGamepadButtonOffset_B:
 			return ACTION_KEY::kActionKey_TAB;
-			break;
 		}
 
 		return a_keyCode;
@@ -180,19 +175,15 @@ namespace Inputs {
 		switch (a_dir) {
 		case RE::DIRECTION_VAL::kUp:
 			return ACTION_KEY::kActionKey_UP;
-			break;
 
 		case RE::DIRECTION_VAL::kDown:
 			return ACTION_KEY::kActionKey_DOWN;
-			break;
 
 		case RE::DIRECTION_VAL::kLeft:
 			return ACTION_KEY::kActionKey_LEFT;
-			break;
 
 		case RE::DIRECTION_VAL::kRight:
 			return ACTION_KEY::kActionKey_RIGHT;
-			break;
 		}
 
 		return 0xFF;
@@ -200,18 +191,19 @@ namespace Inputs {
 
 	bool SetInputEnableLayer(std::uint32_t a_userEventFlag, std::uint32_t a_otherEventFlag) {
 		BSInputEnableManager* g_inputEnableManager = BSInputEnableManager::GetSingleton();
-		if (!g_inputEnableManager)
+		if (!g_inputEnableManager) {
 			return false;
+		}
 
 		g_inputEnableManager->inputEnableArrLock.lock();
 
 		g_inputEnableLayerIndex = 0xFFFFFFFF;
-		for (auto layerState : g_inputEnableManager->layerStateArr) {
-			if (layerState->state != 1)
-				continue;
 
-			g_inputEnableLayerIndex = layerState->index;
-			break;
+		for (auto layerState : g_inputEnableManager->layerStateArr) {
+			if (layerState->state == 1) {
+				g_inputEnableLayerIndex = layerState->index;
+				break;
+			}
 		}
 
 		if (g_inputEnableLayerIndex == 0xFFFFFFFF) {
@@ -230,8 +222,9 @@ namespace Inputs {
 	}
 
 	void SetInputEnableLayer() {
-		if (g_inputEnableLayerEnabled)
+		if (g_inputEnableLayerEnabled) {
 			return;
+		}
 
 		g_inputEnableLayerEnabled = true;
 		std::uint32_t userEventFlag = BSInputEnableManager::kUserEvent_Menu | BSInputEnableManager::kUserEvent_Fighting;
@@ -240,12 +233,14 @@ namespace Inputs {
 	}
 
 	bool ResetInputEnableLayer(std::uint32_t a_layerIdx) {
-		if (a_layerIdx == 0xFFFFFFFF)
+		if (a_layerIdx == 0xFFFFFFFF) {
 			return false;
+		}
 
 		BSInputEnableManager* g_inputEnableManager = BSInputEnableManager::GetSingleton();
-		if (!g_inputEnableManager)
+		if (!g_inputEnableManager) {
 			return false;
+		}
 
 		g_inputEnableManager->inputEnableArrLock.lock();
 
@@ -261,8 +256,9 @@ namespace Inputs {
 	}
 
 	void ResetInputEnableLayer() {
-		if (!g_inputEnableLayerEnabled)
+		if (!g_inputEnableLayerEnabled) {
 			return;
+		}
 
 		g_inputEnableLayerEnabled = false;
 		ResetInputEnableLayer(g_inputEnableLayerIndex);
@@ -270,19 +266,22 @@ namespace Inputs {
 
 	void BlockPlayerControls(bool a_block) {
 		RE::PlayerControls* g_pc = RE::PlayerControls::GetSingleton();
-		if (!g_pc)
+		if (!g_pc) {
 			return;
+		}
 
 		g_pc->blockPlayerInput = a_block;
 	}
 
 	void EnableMenuControls(std::map<RE::BSInputEventUser*, bool>& a_menuVec, bool a_enabled) {
 		RE::MenuControls* g_menuControls = RE::MenuControls::GetSingleton();
-		if (!g_menuControls)
+		if (!g_menuControls) {
 			return;
+		}
 
-		if (!a_enabled)
+		if (!a_enabled) {
 			a_menuVec.clear();
+		}
 
 		// 0 ~ 7 is reserved
 		for (std::uint32_t ii = 8; ii < g_menuControls->handlers.size(); ii++) {
@@ -292,8 +291,9 @@ namespace Inputs {
 			}
 			else {
 				auto it = a_menuVec.find(g_menuControls->handlers[ii]);
-				if (it != a_menuVec.end())
+				if (it != a_menuVec.end()) {
 					g_menuControls->handlers[ii]->inputEventHandlingEnabled = it->second;
+				}
 			}
 		}
 	}

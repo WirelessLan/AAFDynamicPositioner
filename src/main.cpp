@@ -4,11 +4,9 @@
 #include "Scaleforms.h"
 
 std::string GetINIOption(const char* a_section, const char* a_key) {
-	std::string	result;
-	char resultBuf[256] = { 0 };
-
-	static const std::string& configPath = fmt::format("Data\\MCM\\Settings\\{}.ini", Version::PROJECT);
-	GetPrivateProfileStringA(a_section, a_key, NULL, resultBuf, sizeof(resultBuf), configPath.c_str());
+	static const std::string configPath = fmt::format("Data\\MCM\\Settings\\{}.ini", Version::PROJECT);
+	char resultBuf[256]{};
+	GetPrivateProfileStringA(a_section, a_key, "", resultBuf, sizeof(resultBuf), configPath.c_str());
 	return resultBuf;
 }
 
@@ -22,7 +20,7 @@ void ReadINI() {
 		}
 		catch (...) {}
 	}
-	logger::info(FMT_STRING("bSeparatePlayerOffset: {}"), Positioners::g_separatePlayerOffset);
+	logger::info("bSeparatePlayerOffset: {}", Positioners::g_separatePlayerOffset);
 
 	value = GetINIOption("Settings", "bUnifyAAFDoppelgangerScale");
 	if (!value.empty()) {
@@ -31,7 +29,7 @@ void ReadINI() {
 		}
 		catch (...) {}
 	}
-	logger::info(FMT_STRING("bUnifyAAFDoppelgangerScale: {}"), Positioners::g_unifyAAFDoppelgangerScale);
+	logger::info("bUnifyAAFDoppelgangerScale: {}", Positioners::g_unifyAAFDoppelgangerScale);
 
 	value = GetINIOption("Settings", "iPlayerPositionerType");
 	if (!value.empty()) {
@@ -40,7 +38,7 @@ void ReadINI() {
 		}
 		catch (...) {}
 	}
-	logger::info(FMT_STRING("iPlayerPositionerType: {}"), Positioners::g_playerPositionerType);
+	logger::info("iPlayerPositionerType: {}", Positioners::g_playerPositionerType);
 
 	value = GetINIOption("Settings", "iNPCPositionerType");
 	if (!value.empty()) {
@@ -49,7 +47,7 @@ void ReadINI() {
 		}
 		catch (...) {}
 	}
-	logger::info(FMT_STRING("iNPCPositionerType: {}"), Positioners::g_npcPositionerType);
+	logger::info("iNPCPositionerType: {}", Positioners::g_npcPositionerType);
 }
 
 void OnF4SEMessage(F4SE::MessagingInterface::Message* a_msg) {
@@ -127,16 +125,19 @@ extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Load(const F4SE::LoadInterface * a_
 	ReadINI();
 
 	const F4SE::MessagingInterface* message = F4SE::GetMessagingInterface();
-	if (message)
+	if (message) {
 		message->RegisterListener(OnF4SEMessage);
+	}
 
 	const F4SE::PapyrusInterface* papyrus = F4SE::GetPapyrusInterface();
-	if (papyrus)
+	if (papyrus) {
 		papyrus->Register(RegisterPapyrusFunctions);
+	}
 
 	const F4SE::ScaleformInterface* scaleform = F4SE::GetScaleformInterface();
-	if (scaleform)
+	if (scaleform) {
 		scaleform->Register(Version::PROJECT, RegisterScaleforms);
+	}
 
 	return true;
 }

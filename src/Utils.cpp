@@ -11,8 +11,9 @@ namespace Utils {
 	}
 
 	std::uint8_t GetNextChar(const std::string& a_line, std::uint32_t& a_index) {
-		if (a_index < a_line.length())
+		if (a_index < a_line.length()) {
 			return a_line[a_index++];
+		}
 
 		return 0xFF;
 	}
@@ -23,12 +24,15 @@ namespace Utils {
 
 		while ((ch = GetNextChar(a_line, a_index)) != 0xFF) {
 			if (ch == '#') {
-				if (a_index > 0) a_index--;
+				if (a_index > 0) {
+					a_index--;
+				}
 				break;
 			}
 
-			if (a_delimeter != 0 && ch == a_delimeter)
+			if (a_delimeter != 0 && ch == a_delimeter) {
 				break;
+			}
 
 			retVal += static_cast<char>(ch);
 		}
@@ -48,8 +52,9 @@ namespace Utils {
 
 	RE::TESForm* GetFormFromIdentifier(std::string_view a_pluginName, std::uint32_t a_formID) {
 		RE::TESDataHandler* g_dataHandler = RE::TESDataHandler::GetSingleton();
-		if (!g_dataHandler)
+		if (!g_dataHandler) {
 			return nullptr;
+		}
 
 		return g_dataHandler->LookupForm(a_formID, a_pluginName);
 	}
@@ -60,20 +65,23 @@ namespace Utils {
 	}
 
 	float GetActualScale(RE::TESObjectREFR* a_refr) {
-		if (!a_refr)
+		if (!a_refr) {
 			return 0.0f;
+		}
 
 		using func_t = float(*)(RE::TESObjectREFR*);
 		REL::Relocation<func_t> func{ REL::ID(911188) };
 		float actualScale = func(a_refr);
 
 		RE::NiAVObject* skeletonNode = a_refr->Get3D(false);
-		if (!skeletonNode)
+		if (!skeletonNode) {
 			return actualScale;
+		}
 
 		RE::NiAVObject* comNode = skeletonNode->GetObjectByName("COM");
-		if (!comNode)
+		if (!comNode) {
 			return actualScale;
+		}
 
 		actualScale *= comNode->local.scale;
 
@@ -88,8 +96,9 @@ namespace Utils {
 
 	void SetRefScale(RE::TESObjectREFR* a_refr, float a_scale) {
 		float currActualScale = GetActualScale(a_refr);
-		if (currActualScale == a_scale)
+		if (currActualScale == a_scale) {
 			return;
+		}
 
 		float baseScale = currActualScale * 100 / a_refr->refScale;
 		float modifiedRefScale = std::round(a_scale / baseScale * 100) / 100;
@@ -106,8 +115,9 @@ namespace Utils {
 	}
 
 	bool HasSpell(RE::Actor* a_actor, RE::SpellItem* a_spell) {
-		if (!a_actor || !a_spell)
+		if (!a_actor || !a_spell) {
 			return false;
+		}
 
 		using func_t = bool(*)(RE::Actor*, RE::SpellItem*);
 		REL::Relocation<func_t> func{ REL::ID(850247) };
@@ -115,8 +125,9 @@ namespace Utils {
 	}
 
 	void AddSpell(RE::Actor* a_actor, RE::SpellItem* a_spell) {
-		if (!a_actor || !a_spell)
+		if (!a_actor || !a_spell) {
 			return;
+		}
 
 		using func_t = void(*)(RE::Actor*, RE::SpellItem*);
 		REL::Relocation<func_t> func{ REL::ID(1433810) };
@@ -124,8 +135,9 @@ namespace Utils {
 	}
 
 	void RemoveSpell(RE::Actor* a_actor, RE::SpellItem* a_spell) {
-		if (!a_actor || !a_spell)
+		if (!a_actor || !a_spell) {
 			return;
+		}
 
 		using func_t = void(*)(RE::Actor*, RE::SpellItem*);
 		REL::Relocation<func_t> func{ REL::ID(1500183) };

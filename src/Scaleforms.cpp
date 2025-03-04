@@ -15,14 +15,15 @@ namespace Scaleforms {
 	public:
 		PositionerMenu() : RE::IMenu() {
 			Instance = this;
-			Instance->menuFlags = (RE::UI_MENU_FLAGS)0;
+			Instance->menuFlags = static_cast<RE::UI_MENU_FLAGS>(0);
 			Instance->UpdateFlag(RE::UI_MENU_FLAGS::kUsesCursor, true);
 			Instance->UpdateFlag(RE::UI_MENU_FLAGS::kTopmostRenderedMenu, true);
 			Instance->inputEventHandlingEnabled = false;
 
 			RE::BSScaleformManager* g_scaleformManager = RE::BSScaleformManager::GetSingleton();
-			if (g_scaleformManager)
+			if (g_scaleformManager) {
 				g_scaleformManager->LoadMovie(*Instance, uiMovie, g_menuName.data(), "root1");
+			}
 		}
 
 		~PositionerMenu() {
@@ -36,33 +37,34 @@ namespace Scaleforms {
 		void OnButtonEvent(const RE::ButtonEvent* a_inputEvent) override {
 			std::uint32_t keyCode;
 
-			// Mouse
-			if (a_inputEvent->device == RE::INPUT_DEVICE::kMouse)
+			if (a_inputEvent->device == RE::INPUT_DEVICE::kMouse) {
 				keyCode = Inputs::GetMouseKeycode(a_inputEvent->idCode);
-			// Gamepad
-			else if (a_inputEvent->device == RE::INPUT_DEVICE::kGamepad)
+			}
+			else if (a_inputEvent->device == RE::INPUT_DEVICE::kGamepad) {
 				keyCode = Inputs::GamepadMaskToKeycode(a_inputEvent->idCode);
-			// Keyboard
-			else
+			}
+			else {
 				keyCode = a_inputEvent->idCode;
+			}
 
 			// Valid scancode?
-			if (!Inputs::IsValidKeycode(keyCode))
+			if (!Inputs::IsValidKeycode(keyCode)) {
 				return;
+			}
 
 			keyCode = Inputs::ReplaceKeyCodeForMenu(keyCode);
-
 			bool isDown = a_inputEvent->value == 1.0f;
 
 			sendKeyEvent(keyCode, isDown);
 		}
 
 		void OnThumbstickEvent(const RE::ThumbstickEvent* a_inputEvent) override {
-			if (a_inputEvent->idCode != RE::ThumbstickEvent::THUMBSTICK_ID::kLeft)
+			if (a_inputEvent->idCode != RE::ThumbstickEvent::THUMBSTICK_ID::kLeft) {
 				return;
+			}
 
-			uint32_t prevKeyCode = Inputs::DirectionToKeyCode(a_inputEvent->prevDir);
-			uint32_t currKeyCode = Inputs::DirectionToKeyCode(a_inputEvent->currDir);
+			std::uint32_t prevKeyCode = Inputs::DirectionToKeyCode(a_inputEvent->prevDir);
+			std::uint32_t currKeyCode = Inputs::DirectionToKeyCode(a_inputEvent->currDir);
 			if (currKeyCode != 0xFF) {
 				sendKeyEvent(currKeyCode, true);
 			}
@@ -86,8 +88,9 @@ namespace Scaleforms {
 	private:
 		void sendKeyEvent(uint32_t a_keyCode, bool a_isDown) {
 			PositionerMenu* g_menuInst = PositionerMenu::GetSingleton();
-			if (!g_menuInst)
+			if (!g_menuInst) {
 				return;
+			}
 
 			RE::Scaleform::GFx::ASMovieRootBase* movieRoot = g_menuInst->uiMovie->asMovieRoot.get();
 			RE::Scaleform::GFx::Value root;
@@ -122,8 +125,9 @@ namespace Scaleforms {
 	class ThrowHandler : public RE::Scaleform::GFx::FunctionHandler {
 	public:
 		virtual void Call(const Params& a_params) override {
-			if (a_params.argCount > 0)
-				logger::critical(FMT_STRING("Throw Message: {}"), a_params.args[0].GetString());
+			if (a_params.argCount > 0) {
+				logger::critical("Throw Message: {}", a_params.args[0].GetString());
+			}
 			CloseMenu();
 		}
 	};
@@ -157,8 +161,10 @@ namespace Scaleforms {
 
 			RE::Scaleform::GFx::Value locVal;
 			movieRoot->CreateObject(&locVal);
-			for (const auto& transPair : g_loc->translationsMap)
+
+			for (const auto& transPair : g_loc->translationsMap) {
 				locVal.SetMember(transPair.first, RE::Scaleform::GFx::Value(transPair.second.c_str()));
+			}
 
 			a_params.retVal->SetMember("Language", g_loc->lang.data());
 			a_params.retVal->SetMember("Localizations", locVal);
@@ -187,18 +193,23 @@ namespace Scaleforms {
 	class UpdateSettingsHandler : public RE::Scaleform::GFx::FunctionHandler {
 	public:
 		virtual void Call(const Params& a_params) override {
-			if (a_params.argCount == 0 || a_params.args[0].GetType() != RE::Scaleform::GFx::Value::ValueType::kString)
+			if (a_params.argCount == 0 || a_params.args[0].GetType() != RE::Scaleform::GFx::Value::ValueType::kString) {
 				return;
+			}
 
 			if (a_params.argCount == 2) {
-				if (strcmp(a_params.args[0].GetString(), "bSeparatePlayerOffset") == 0)
+				if (strcmp(a_params.args[0].GetString(), "bSeparatePlayerOffset") == 0) {
 					Positioners::g_separatePlayerOffset = a_params.args[1].GetBoolean();
-				else if (strcmp(a_params.args[0].GetString(), "bUnifyAAFDoppelgangerScale") == 0)
+				}
+				else if (strcmp(a_params.args[0].GetString(), "bUnifyAAFDoppelgangerScale") == 0) {
 					Positioners::g_unifyAAFDoppelgangerScale = a_params.args[1].GetBoolean();
-				else if (strcmp(a_params.args[0].GetString(), "iPlayerPositionerType") == 0)
+				}
+				else if (strcmp(a_params.args[0].GetString(), "iPlayerPositionerType") == 0) {
 					Positioners::g_playerPositionerType = a_params.args[1].GetInt();
-				else if (strcmp(a_params.args[0].GetString(), "iNPCPositionerType") == 0)
+				}
+				else if (strcmp(a_params.args[0].GetString(), "iNPCPositionerType") == 0) {
 					Positioners::g_npcPositionerType = a_params.args[1].GetInt();
+				}
 			}
 		}
 	};
@@ -225,8 +236,9 @@ namespace Scaleforms {
 		if (g_ui) {
 			g_ui->RegisterMenu(g_menuName.data(), [](const RE::UIMessage&) -> RE::IMenu* {
 				PositionerMenu* menu = PositionerMenu::GetSingleton();
-				if (!menu)
+				if (!menu) {
 					menu = new PositionerMenu();
+				}
 				return menu;
 			});
 
@@ -248,25 +260,27 @@ namespace Scaleforms {
 			}
 		}
 
-		std::string transPath = fmt::format(FMT_STRING("Data\\Interface\\Translations\\{}_{}.txt"), g_menuName, loc->lang);
+		std::string transPath = fmt::format("Data\\Interface\\Translations\\{}_{}.txt", g_menuName, loc->lang);
 		std::ifstream transFile(transPath);
 		if (!transFile.is_open()) {
 			bool noTrans = false;
 
 			if (loc->lang != "en") {
-				logger::warn(FMT_STRING("Cannot open the translation file: {}"), transPath);
+				logger::warn("Cannot open the translation file: {}", transPath);
 
-				transPath = fmt::format(FMT_STRING("Data\\Interface\\Translations\\{}_en.txt"), g_menuName);
+				transPath = fmt::format("Data\\Interface\\Translations\\{}_en.txt", g_menuName);
 				transFile.clear();
 				transFile.open(transPath);
-				if (!transFile.is_open())
+				if (!transFile.is_open()) {
 					noTrans = true;
+				}
 			}
-			else
+			else {
 				noTrans = true;
+			}
 
 			if (noTrans) {
-				logger::warn(FMT_STRING("Cannot find the translation file: {}"), transPath);
+				logger::warn("Cannot find the translation file: {}", transPath);
 				return;
 			}
 		}
@@ -275,8 +289,9 @@ namespace Scaleforms {
 		std::string name, value;
 		while (std::getline(transFile, line)) {
 			Utils::Trim(line);
-			if (line.empty() || line.starts_with('#'))
+			if (line.empty() || line.starts_with('#')) {
 				continue;
+			}
 
 			std::uint32_t index = 0;
 
@@ -320,19 +335,22 @@ namespace Scaleforms {
 		Inputs::SetInputEnableLayer();
 
 		RE::UIMessageQueue* g_uiMessageQueue = RE::UIMessageQueue::GetSingleton();
-		if (g_uiMessageQueue)
+		if (g_uiMessageQueue) {
 			g_uiMessageQueue->AddMessage(g_menuName, RE::UI_MESSAGE_TYPE::kShow);
+		}
 	}
 
 	void UpdateMenu(RE::NiPoint3& a_offset) {
-		if (!IsMenuOpen())
+		if (!IsMenuOpen()) {
 			return;
+		}
 
 		g_offset = a_offset;
 
 		PositionerMenu* g_menuInst = PositionerMenu::GetSingleton();
-		if (!g_menuInst)
+		if (!g_menuInst) {
 			return;
+		}
 
 		RE::Scaleform::GFx::ASMovieRootBase* movieRoot = g_menuInst->uiMovie->asMovieRoot.get();
 		RE::Scaleform::GFx::Value root;
@@ -355,14 +373,16 @@ namespace Scaleforms {
 		Inputs::ResetInputEnableLayer();
 
 		RE::UIMessageQueue* g_uiMessageQueue = RE::UIMessageQueue::GetSingleton();
-		if (g_uiMessageQueue)
+		if (g_uiMessageQueue) {
 			g_uiMessageQueue->AddMessage(g_menuName, RE::UI_MESSAGE_TYPE::kHide);
+		}
 	}
 
 	bool IsMenuOpen() {
 		RE::UI* g_ui = RE::UI::GetSingleton();
-		if (!g_ui)
+		if (!g_ui) {
 			return false;
+		}
 		
 		return g_ui->GetMenuOpen(g_menuName);
 	}

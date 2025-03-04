@@ -2,8 +2,8 @@
 
 namespace PositionData {
 	struct Data {
-		std::uint32_t	index;
-		RE::NiPoint3	offset;
+		std::uint32_t index;
+		RE::NiPoint3  offset;
 	};
 
 	std::vector<Data> LoadPositionData(const std::string& a_position, bool a_isPlayerScene);
