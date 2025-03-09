@@ -23,7 +23,6 @@ namespace Positioners {
 		kYes = 0,
 		kNo_Selection,
 		kNo_Scale,
-		kNo_Disabled
 	};
 
 	std::unordered_map<std::uint32_t, ActorData> g_actorMap;
@@ -33,7 +32,6 @@ namespace Positioners {
 	bool g_unifyAAFDoppelgangerScale = true;
 	std::uint64_t g_sceneMapKey = 1;
 	std::uint32_t g_selectedActorFormID = 0;
-	bool g_positionerEnabled = false;
 
 	std::uint32_t GetSelectedActorFormID() {
 		return g_selectedActorFormID;
@@ -291,10 +289,6 @@ namespace Positioners {
 	}
 
 	void SetOffset(const std::string& a_axis, float a_offset) {
-		if (!g_positionerEnabled) {
-			return;
-		}
-
 		ActorData* actorData = GetSelectedActorData();
 		if (!actorData) {
 			return;
@@ -325,10 +319,6 @@ namespace Positioners {
 	}
 
 	void ClearOffset() {
-		if (!g_positionerEnabled) {
-			return;
-		}
-
 		ActorData* actorData = GetSelectedActorData();
 		if (!actorData) {
 			return;
@@ -355,27 +345,6 @@ namespace Positioners {
 		g_sceneMap.clear();
 		g_sceneMapKey = 1;
 		ClearSelectedActorFormID();
-		g_positionerEnabled = false;
-	}
-
-	bool IsPositionerEnabled(std::monostate) {
-		return g_positionerEnabled;
-	}
-
-	void SetPositionerState(std::monostate, bool a_start) {
-		if (a_start) {
-			g_positionerEnabled = true;
-			return;
-		}
-
-		ActorData* actorData = GetSelectedActorData();
-		if (actorData) {
-			ClearHighlightSpellFromActor(actorData->Actor);
-		}
-
-		ClearSelectedActorFormID();
-
-		g_positionerEnabled = false;
 	}
 
 	void SceneInit(std::monostate, RE::BSTArray<RE::Actor*> a_actors, RE::Actor* a_doppelganger) {
@@ -516,10 +485,6 @@ namespace Positioners {
 	}
 
 	std::uint32_t CanMovePosition(std::monostate) {
-		if (!g_positionerEnabled) {
-			return CAN_MOVE::kNo_Disabled;
-		}
-
 		ActorData* selectedActorData = GetSelectedActorData();
 		if (!selectedActorData) {
 			return CAN_MOVE::kNo_Selection;
@@ -536,15 +501,12 @@ namespace Positioners {
 	}
 
 	RE::Actor* ChangeSelectedActor() {
-		if (!g_positionerEnabled) {
-			return nullptr;
-		}
-
 		ActorData* actorData;
 		SceneData* sceneData;
 
 		// 현재 선택되어있는 액터를 가져옴
 		actorData = GetSelectedActorData();
+
 		// 현재 선택되어있는 액터가 없을 경우
 		if (!actorData) {
 			// 플레이어로 진행중인 씬이 있는지 확인
@@ -666,11 +628,15 @@ namespace Positioners {
 		return true;
 	}
 
-	void ShowPositionerMenu_Native(std::monostate) {
-		if (!g_positionerEnabled) {
-			return;
+	void ClearActorSelection(std::monostate) {
+		ActorData* selectedActorData = GetSelectedActorData();
+		if (selectedActorData) {
+			ClearHighlightSpellFromActor(selectedActorData->Actor);
 		}
+		ClearSelectedActorFormID();
+	}
 
+	void ShowPositionerMenu_Native(std::monostate) {
 		ActorData* actorData = GetSelectedActorData();
 		if (!actorData) {
 			return;
@@ -694,15 +660,13 @@ namespace Positioners {
 	}
 
 	void Install(RE::BSScript::IVirtualMachine* a_vm) {
-		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "IsPositionerEnabled"sv, IsPositionerEnabled);
-		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "SetPositionerState"sv, SetPositionerState);
-
 		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "SceneInit"sv, SceneInit);
 		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "AnimationChange"sv, AnimationChange);
 		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "SceneEnd"sv, SceneEnd);
 
 		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "CanMovePosition"sv, CanMovePosition);
 		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "ChangeActor_Native"sv, ChangeActor_Native);
+		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "ClearActorSelection"sv, ClearActorSelection);
 
 		a_vm->BindNativeMethod("AAFDynamicPositioner"sv, "ShowPositionerMenu_Native"sv, ShowPositionerMenu_Native);
 	}

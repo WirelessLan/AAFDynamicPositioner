@@ -7,7 +7,8 @@
 #include "Utils.h"
 
 namespace Scaleforms {
-	const std::string_view g_menuName = "AAFDynamicPositionerMenu";
+	constexpr const char* MenuName = "AAFDynamicPositionerMenu";
+
 	RE::NiPoint3 g_offset;
 	std::map<RE::BSInputEventUser*, bool> g_menuEnableMap;
 
@@ -15,14 +16,13 @@ namespace Scaleforms {
 	public:
 		PositionerMenu() : RE::IMenu() {
 			Instance = this;
-			Instance->menuFlags = static_cast<RE::UI_MENU_FLAGS>(0);
-			Instance->UpdateFlag(RE::UI_MENU_FLAGS::kUsesCursor, true);
-			Instance->UpdateFlag(RE::UI_MENU_FLAGS::kTopmostRenderedMenu, true);
+			Instance->menuFlags.set(RE::UI_MENU_FLAGS::kUsesCursor, RE::UI_MENU_FLAGS::kTopmostRenderedMenu);
+			Instance->depthPriority.set(RE::UI_DEPTH_PRIORITY::kTerminal);
 			Instance->inputEventHandlingEnabled = false;
 
-			RE::BSScaleformManager* g_scaleformManager = RE::BSScaleformManager::GetSingleton();
-			if (g_scaleformManager) {
-				g_scaleformManager->LoadMovie(*Instance, uiMovie, g_menuName.data(), "root1");
+			RE::BSScaleformManager* scaleformManager = RE::BSScaleformManager::GetSingleton();
+			if (scaleformManager) {
+				scaleformManager->LoadMovie(*Instance, uiMovie, MenuName, "root1");
 			}
 		}
 
@@ -47,15 +47,13 @@ namespace Scaleforms {
 				keyCode = a_inputEvent->idCode;
 			}
 
-			// Valid scancode?
 			if (!Inputs::IsValidKeycode(keyCode)) {
 				return;
 			}
 
 			keyCode = Inputs::ReplaceKeyCodeForMenu(keyCode);
-			bool isDown = a_inputEvent->value == 1.0f;
 
-			sendKeyEvent(keyCode, isDown);
+			sendKeyEvent(keyCode, a_inputEvent->value == 1.0f);
 		}
 
 		void OnThumbstickEvent(const RE::ThumbstickEvent* a_inputEvent) override {
@@ -87,12 +85,12 @@ namespace Scaleforms {
 
 	private:
 		void sendKeyEvent(uint32_t a_keyCode, bool a_isDown) {
-			PositionerMenu* g_menuInst = PositionerMenu::GetSingleton();
-			if (!g_menuInst) {
+			PositionerMenu* positioner = PositionerMenu::GetSingleton();
+			if (!positioner) {
 				return;
 			}
 
-			RE::Scaleform::GFx::ASMovieRootBase* movieRoot = g_menuInst->uiMovie->asMovieRoot.get();
+			RE::Scaleform::GFx::ASMovieRootBase* movieRoot = positioner->uiMovie->asMovieRoot.get();
 			RE::Scaleform::GFx::Value root;
 			if (!movieRoot || !movieRoot->GetVariable(&root, "root")) {
 				logger::critical("SendKeyEvent: Couldn't get a root");
@@ -113,12 +111,12 @@ namespace Scaleforms {
 	public:
 		Localizations() {}
 
-		static Localizations* GetSingleton() {
+		static Localizations& GetSingleton() {
 			static Localizations loc;
-			return &loc;
+			return loc;
 		}
 
-		std::string_view lang;
+		std::string lang;
 		std::unordered_map<std::string, std::string> translationsMap;
 	};
 
@@ -142,18 +140,17 @@ namespace Scaleforms {
 	class GetInitializationDataHandler : public RE::Scaleform::GFx::FunctionHandler {
 	public:
 		virtual void Call(const Params& a_params) override {
-			RE::IMenu* g_menu = PositionerMenu::GetSingleton();
-			g_menu->inputEventHandlingEnabled = true;
+			RE::IMenu* positioner = PositionerMenu::GetSingleton();
+			if (!positioner) {
+				logger::critical("GetInitializationDataHandler: Couldn't get a positioner!");
+				return;
+			}
+
+			positioner->inputEventHandlingEnabled = true;
 
 			RE::Scaleform::GFx::ASMovieRootBase* movieRoot = a_params.movie->asMovieRoot.get();
 			if (!movieRoot) {
 				logger::critical("GetInitializationDataHandler: Couldn't get a movieRoot!");
-				return;
-			}
-
-			Localizations* g_loc = Localizations::GetSingleton();
-			if (!g_loc) {
-				logger::critical("GetInitializationDataHandler: Couldn't get the localization data!");
 				return;
 			}
 
@@ -162,11 +159,12 @@ namespace Scaleforms {
 			RE::Scaleform::GFx::Value locVal;
 			movieRoot->CreateObject(&locVal);
 
-			for (const auto& transPair : g_loc->translationsMap) {
+			Localizations& loc = Localizations::GetSingleton();
+			for (const auto& transPair : loc.translationsMap) {
 				locVal.SetMember(transPair.first, RE::Scaleform::GFx::Value(transPair.second.c_str()));
 			}
 
-			a_params.retVal->SetMember("Language", g_loc->lang.data());
+			a_params.retVal->SetMember("Language", loc.lang.c_str());
 			a_params.retVal->SetMember("Localizations", locVal);
 		}
 	};
@@ -232,54 +230,54 @@ namespace Scaleforms {
 	};
 
 	void RegisterMenu() {
-		RE::UI* g_ui = RE::UI::GetSingleton();
-		if (g_ui) {
-			g_ui->RegisterMenu(g_menuName.data(), [](const RE::UIMessage&) -> RE::IMenu* {
-				PositionerMenu* menu = PositionerMenu::GetSingleton();
-				if (!menu) {
-					menu = new PositionerMenu();
-				}
-				return menu;
-			});
-
-			logger::info("Menu Registered");
+		RE::UI* ui = RE::UI::GetSingleton();
+		if (!ui) {
+			logger::critical("Menu Registration Failed");
+			return;
 		}
+
+		ui->RegisterMenu(MenuName, [](const RE::UIMessage&) -> RE::IMenu* {
+			PositionerMenu* positioner = PositionerMenu::GetSingleton();
+			if (!positioner) {
+				positioner = new PositionerMenu();
+			}
+			return positioner;
+		});
+
+		logger::info("Menu Registered");
 	}
 
 	void LoadLocalizations() {
-		Localizations* loc = Localizations::GetSingleton();
+		Localizations& loc = Localizations::GetSingleton();
 
-		loc->lang = "en";	// Default sLanguage
-		RE::INISettingCollection* g_iniSettings = RE::INISettingCollection::GetSingleton();
-		if (g_iniSettings) {
-			for (RE::Setting* set : g_iniSettings->settings) {
+		loc.lang = "en";	// Default sLanguage
+		RE::INISettingCollection* iniSettings = RE::INISettingCollection::GetSingleton();
+		if (iniSettings) {
+			for (RE::Setting* set : iniSettings->settings) {
 				if (set->GetKey() == "sLanguage:General"sv) {
-					loc->lang = set->GetString();
+					loc.lang = set->GetString();
 					break;
 				}
 			}
 		}
 
-		std::string transPath = fmt::format("Data\\Interface\\Translations\\{}_{}.txt", g_menuName, loc->lang);
+		std::string transPath = fmt::format("Data\\Interface\\Translations\\{}_{}.txt", MenuName, loc.lang);
 		std::ifstream transFile(transPath);
 		if (!transFile.is_open()) {
-			bool noTrans = false;
+			bool found = false;
 
-			if (loc->lang != "en") {
+			if (loc.lang != "en") {
 				logger::warn("Cannot open the translation file: {}", transPath);
 
-				transPath = fmt::format("Data\\Interface\\Translations\\{}_en.txt", g_menuName);
+				transPath = fmt::format("Data\\Interface\\Translations\\{}_en.txt", MenuName);
 				transFile.clear();
 				transFile.open(transPath);
-				if (!transFile.is_open()) {
-					noTrans = true;
+				if (transFile.is_open()) {
+					found = true;
 				}
 			}
-			else {
-				noTrans = true;
-			}
 
-			if (noTrans) {
+			if (!found) {
 				logger::warn("Cannot find the translation file: {}", transPath);
 				return;
 			}
@@ -307,7 +305,7 @@ namespace Scaleforms {
 				continue;
 			}
 
-			loc->translationsMap.insert(std::make_pair(name, value));
+			loc.translationsMap.insert(std::make_pair(name, value));
 		}
 	}
 
@@ -334,9 +332,9 @@ namespace Scaleforms {
 		Inputs::EnableMenuControls(g_menuEnableMap, false);
 		Inputs::SetInputEnableLayer();
 
-		RE::UIMessageQueue* g_uiMessageQueue = RE::UIMessageQueue::GetSingleton();
-		if (g_uiMessageQueue) {
-			g_uiMessageQueue->AddMessage(g_menuName, RE::UI_MESSAGE_TYPE::kShow);
+		RE::UIMessageQueue* uiMessageQueue = RE::UIMessageQueue::GetSingleton();
+		if (uiMessageQueue) {
+			uiMessageQueue->AddMessage(MenuName, RE::UI_MESSAGE_TYPE::kShow);
 		}
 	}
 
@@ -347,12 +345,12 @@ namespace Scaleforms {
 
 		g_offset = a_offset;
 
-		PositionerMenu* g_menuInst = PositionerMenu::GetSingleton();
-		if (!g_menuInst) {
+		PositionerMenu* positioner = PositionerMenu::GetSingleton();
+		if (!positioner) {
 			return;
 		}
 
-		RE::Scaleform::GFx::ASMovieRootBase* movieRoot = g_menuInst->uiMovie->asMovieRoot.get();
+		RE::Scaleform::GFx::ASMovieRootBase* movieRoot = positioner->uiMovie->asMovieRoot.get();
 		RE::Scaleform::GFx::Value root;
 		if (!movieRoot || !movieRoot->GetVariable(&root, "root")) {
 			logger::critical("UpdateMenu: Couldn't get a root");
@@ -372,18 +370,14 @@ namespace Scaleforms {
 		Inputs::EnableMenuControls(g_menuEnableMap, true);
 		Inputs::ResetInputEnableLayer();
 
-		RE::UIMessageQueue* g_uiMessageQueue = RE::UIMessageQueue::GetSingleton();
-		if (g_uiMessageQueue) {
-			g_uiMessageQueue->AddMessage(g_menuName, RE::UI_MESSAGE_TYPE::kHide);
+		RE::UIMessageQueue* uiMessageQueue = RE::UIMessageQueue::GetSingleton();
+		if (uiMessageQueue) {
+			uiMessageQueue->AddMessage(MenuName, RE::UI_MESSAGE_TYPE::kHide);
 		}
 	}
 
 	bool IsMenuOpen() {
-		RE::UI* g_ui = RE::UI::GetSingleton();
-		if (!g_ui) {
-			return false;
-		}
-		
-		return g_ui->GetMenuOpen(g_menuName);
+		RE::UI* ui = RE::UI::GetSingleton();
+		return ui && ui->GetMenuOpen(MenuName);
 	}
 }
